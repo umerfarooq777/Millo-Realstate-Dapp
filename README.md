@@ -27,5 +27,12 @@
 In a separate terminal execute:
 `$ npx hardhat run ./scripts/deploy.js --network localhost`
 
+### 6. Setup metamask accounts
+In a separate terminal execute:
+first acc buyer
+second acc seller
+third acc inspector
+fourth acc lender
+
 ### 7. Start frontend
 `$ npm run start`
