@@ -7,38 +7,16 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
 interface IERC721 {
     function transferFrom(address _from, address _to, uint256 _id) external;
+
+    function _mint(address to, uint256 tokenId) external;
 }
 
 contract Escrow is ERC721URIStorage {
-    //*============================================ STATE
-    using Counters for Counters.Counter;
-    Counters.Counter private _tokenIds;
     address public nftAddress;
-    address public minter;
-    address public inspector1;
-    address public inspector2;
-    address public inspector3;
     address payable public seller;
     address public inspector;
     address public lender;
 
-    struct Property {
-        bool isListed;
-        uint256 purchasePrice;
-        uint256 escrowAmount;
-        address buyer;
-        bool inspectionPassed;
-    }
-
-    mapping(uint256 => Property) public properties;
-    mapping(uint256 => bool) public isListed;
-    mapping(uint256 => uint256) public purchasePrice;
-    mapping(uint256 => uint256) public escrowAmount;
-    mapping(uint256 => address) public buyer;
-    mapping(uint256 => bool) public inspectionPassed;
-    mapping(uint256 => mapping(address => bool)) public approval;
-
-    //*============================================ CONSTRUCTOR
     constructor(
         address _nftAddress,
         address payable _seller,
@@ -51,8 +29,6 @@ contract Escrow is ERC721URIStorage {
         lender = _lender;
     }
 
-    //*============================================ MODIFIERS
-
     modifier onlyBuyer(uint256 _nftID) {
         require(msg.sender == buyer[_nftID], "Only buyer can call this method");
         _;
@@ -63,33 +39,56 @@ contract Escrow is ERC721URIStorage {
         _;
     }
 
-    modifier onlyMinter() {
-        require(
-            msg.sender == minter,
-            "Only Blockbase Minter can call this method"
-        );
-        _;
-    }
-
     modifier onlyInspector() {
         require(msg.sender == inspector, "Only inspector can call this method");
         _;
     }
 
-    //*============================================ FUNCTIONS
+    using Counters for Counters.Counter;
+    Counters.Counter private _tokenIds;
 
-    function mintNewProperty(
-        string memory _tokenURI
-    ) public onlyMinter returns (uint256) {
+    constructor() ERC721("BlockBase RealState", "BBRS") {}
+
+    function mint(string memory tokenURI) public returns (uint256) {
         _tokenIds.increment();
 
-        uint256 newPropertyId = _tokenIds.current();
+        uint256 newItemId = _tokenIds.current();
+        _mint(msg.sender, newItemId);
+        _setTokenURI(newItemId, tokenURI);
 
-        _mint(msg.sender, newPropertyId);
-        _setTokenURI(newPropertyId, _tokenURI);
-        properties[newPropertyId] = Property()
+        return newItemId;
+    }
 
-        return newPropertyId;
+    function totalSupply() public view returns (uint256) {
+        return _tokenIds.current();
+    }
+
+    struct Property {
+        uint256 id;
+        uint256 price;
+        uint256 escrowAmount;
+        address buyer;
+        bool inspectionPassed;
+        bool isListed;
+    }
+
+    mapping(uint256 => Property) public properties;
+
+    mapping(uint256 => bool) public isListed;
+    mapping(uint256 => uint256) public purchasePrice;
+    mapping(uint256 => uint256) public escrowAmount;
+    mapping(uint256 => address) public buyer;
+    mapping(uint256 => bool) public inspectionPassed;
+    mapping(uint256 => mapping(address => bool)) public approval;
+
+    function createProperty(string memory _uri) public payable onlySeller {
+        // Create an NFT Property
+        IERC721(nftAddress).transferFrom(msg.sender, address(this), _nftID);
+
+        isListed[_nftID] = true;
+        purchasePrice[_nftID] = _purchasePrice;
+        escrowAmount[_nftID] = _escrowAmount;
+        buyer[_nftID] = _buyer;
     }
 
     function list(
@@ -162,9 +161,5 @@ contract Escrow is ERC721URIStorage {
 
     function getBalance() public view returns (uint256) {
         return address(this).balance;
-    }
-
-    function totalSupply() public view returns (uint256) {
-        return _tokenIds.current();
     }
 }
